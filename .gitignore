@@ -1,0 +1,10 @@
+# Original datasets
+data/
+
+# Python environment
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
