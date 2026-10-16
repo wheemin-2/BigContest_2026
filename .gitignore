@@ -8,3 +8,7 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# untrack files related to population data
+notebooks/figs_skt
+notebooks/*SKT*
