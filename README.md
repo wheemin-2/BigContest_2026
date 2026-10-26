@@ -15,7 +15,7 @@ Gangnam-gu and Chuncheon-si, 2025-07 to 2025-12. Model: log(daily sales) ~ month
     │   ├── SH_card_data1_preprocessed.csv   (not committed)
     │   ├── weather_event.csv
     │   └── forecast/short17_reg_{gangnam,chuncheon}_d1.csv
-    └── outputs/                      results (git-ignored)
+    └── outputs/                      results
 
 ## Run
     pip install -r requirements.txt
