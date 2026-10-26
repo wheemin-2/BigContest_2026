@@ -1,0 +1,247 @@
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UBI 상권 기후 대응 대시보드</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: sticky control bar -> alert summary -> timeline -> two-column detail (priority list / selected-day breakdown) */
+:root{--bg:#f4f6f8;--surface:#fff;--fg:#17212b;--mute:#5d6b79;--line:#dde3e9;--accent:#1f5f8b;--accent-soft:#e3eef6;
+--l0:#8a97a3;--l1:#d9a521;--l2:#e07a1f;--l3:#c23b3b;--ok:#2f8a57;--font:'Noto Sans KR',system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f161d;--surface:#18222c;--fg:#e8edf2;--mute:#9aa8b6;--line:#2a3743;--accent:#6fb1de;--accent-soft:#1c3345;--l0:#7a8896;--l1:#e3b94a;--l2:#ef9444;--l3:#e66a6a;--ok:#58b883;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f161d;--surface:#18222c;--fg:#e8edf2;--mute:#9aa8b6;--line:#2a3743;--accent:#6fb1de;--accent-soft:#1c3345;--l0:#7a8896;--l1:#e3b94a;--l2:#ef9444;--l3:#e66a6a;--ok:#58b883;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:20px;margin:0;font-weight:700}
+h2{font-size:15px;margin:0 0 8px;font-weight:700}
+.sub{color:var(--mute);font-size:12px}
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;color:var(--fg);font:inherit;padding:6px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input[type=date]{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+.hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.6fr);gap:16px}
+.lvl{display:flex;flex-direction:column;gap:6px}
+.pill{display:inline-block;padding:2px 10px;border-radius:12px;color:#fff;font-weight:700;font-size:13px;width:fit-content}
+.big{font-size:32px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.big small{font-size:14px;font-weight:500;color:var(--mute)}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.kv div span{display:block;color:var(--mute);font-size:12px}
+.kv div b{font-size:18px;font-variant-numeric:tabular-nums}
+.two{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{color:var(--mute);font-weight:500;font-size:12px}
+th:first-child,td:first-child,td.l,th.l{text-align:left}
+.scroll{overflow-x:auto}
+tr.sel td{background:var(--accent-soft)}
+tr.click{cursor:pointer}
+.tag{font-size:11px;border-radius:4px;padding:1px 6px;border:1px solid var(--line);color:var(--mute);margin-left:4px}
+.tag.g-both{border-color:var(--l3);color:var(--l3)}.tag.g-scale{border-color:var(--accent);color:var(--accent)}.tag.g-rel{border-color:var(--l2);color:var(--l2)}
+.sup{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.supc{border:1px solid var(--line);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.supc h3{font-size:14px;margin:0}.supc ul{margin:0;padding-left:16px}
+.on{color:#fff;background:var(--l3);border-radius:10px;padding:1px 8px;font-size:12px;width:fit-content}.off{color:var(--mute);border:1px solid var(--line);border-radius:10px;padding:1px 8px;font-size:12px;width:fit-content}
+.tag.warn{border-color:var(--l2);color:var(--l2)}.tag.hi{border-color:var(--l3);color:var(--l3)}
+.bar{height:8px;background:var(--accent);border-radius:2px;min-width:1px}
+.note{font-size:12px;color:var(--mute);border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:2px}
+svg text{fill:var(--mute);font-family:var(--font);font-size:10px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.rate{position:relative;height:22px;background:var(--bg);border-radius:4px;margin:6px 0}
+.rate .ci{position:absolute;top:8px;height:6px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:3px}
+.rate .pt{position:absolute;top:3px;width:3px;height:16px;background:var(--accent)}
+@media (max-width:760px){.sup{grid-template-columns:minmax(0,1fr)}.hero,.two{grid-template-columns:minmax(0,1fr)}.kv{grid-template-columns:repeat(2,minmax(0,1fr))}.big{font-size:26px}}
+</style>
+<div class="wrap">
+<div class="top">
+ <div><h1>UBI 상권 기후 대응 대시보드</h1><div class="sub">시연용 · 2025-07~12 실제 예보·관측으로 재현한 화면 · 카드 매출 기준</div></div>
+ <div class="ctl">
+  <div class="seg" id="regSeg"></div>
+  <div class="seg" id="viewSeg"><button data-v="gov" aria-pressed="true">지자체</button><button data-v="biz" aria-pressed="false">사장님</button></div>
+ </div>
+</div>
+
+<section class="card" style="border-color:var(--l1)"><b>시연용 화면입니다.</b> <span class="sub">2025년 7~12월 전체 자료로 적합한 모형을 같은 기간 예보에 적용한 값이라 실제 예측 성능이 아닙니다. 실제 서비스에는 여러 해의 카드 매출을 쌓아 모형을 안정화하고 매년 갱신해야 하며, 결과는 "가능성"으로 표현해야 합니다. 예측 성능은 아래 "사전 규칙으로 고른 사례일"에서 해당 주를 제외하고 적합한 값으로 확인합니다.</span></section>
+
+<section class="card">
+ <div class="ctl" style="justify-content:space-between">
+  <div class="ctl"><label for="dt" class="sub">예보 기준일(내일로 가정)</label><input type="date" id="dt" min="2025-07-29" max="2025-12-31">
+   <button id="prev" class="seg" style="padding:5px 10px;cursor:pointer;color:var(--fg);background:var(--surface)" aria-label="이전 날">◀</button>
+   <button id="next" class="seg" style="padding:5px 10px;cursor:pointer;color:var(--fg);background:var(--surface)" aria-label="다음 날">▶</button>
+   <button id="jump" class="seg" style="padding:5px 10px;cursor:pointer;color:var(--fg);background:var(--surface)">피해 최대일로</button></div>
+  <div class="sub" id="issued"></div>
+ </div>
+</section>
+
+<div id="gov" class="wrap" style="gap:16px">
+ <div class="hero">
+  <div class="card lvl" id="heroL"></div>
+  <div class="card"><h2>일별 예상 피해 (대상 업종 합계)</h2><div id="tl"></div><div class="legend" id="lg"></div></div>
+ </div>
+ <div class="two">
+  <div class="card"><div class="ctl" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">이날 업종별 예상 피해</h2><div class="seg" id="basisSeg"><button data-b="final" aria-pressed="true">종합</button><button data-b="scale" aria-pressed="false">금액 기준</button><button data-b="rel" aria-pressed="false">취약도 기준</button></div></div><div class="scroll" id="dayTbl"></div></div>
+  <div class="card"><h2>알림 등급별 과거 성적</h2><div class="sub" style="margin-bottom:6px">해당 주를 제외하고 적합한 예측 vs 관측 강수 기준 모형 추정(8/26 이후, 공휴일 주 제외). 실제 매출로 검증한 값이 아님</div><div class="scroll" id="alertTbl"></div></div>
+ </div>
+<div class="card"><h2>사전 규칙으로 고른 사례일</h2><div class="sub" style="margin-bottom:6px">유형별 예보 강수량 중앙값인 날(8/26 이후, 공휴일 주 제외). 해당 주를 제외하고 적합한 계수 사용. 구간은 계수 불확실성만 반영하며 예보 오차는 빠져 있어 실제 신뢰구간보다 좁습니다.</div><div class="scroll" id="caseTbl"></div></div>
+ <div class="card"><h2>집단별 지원 방안 (선택한 날 기준)</h2><div class="sub" style="margin-bottom:8px">금액 기준·취약도 기준 각각 상위 5개 업종으로 집단을 나눕니다.</div><div class="sup" id="support"></div></div>
+</div>
+
+<div id="biz" class="wrap" style="gap:16px" hidden>
+ <div class="card ctl"><label for="ind" class="sub">업종</label><select id="ind"></select><span class="sub">시군구 전체 평균이며, 개별 점포 예측이 아닙니다.</span></div>
+ <div class="hero">
+  <div class="card lvl" id="bizL"></div>
+  <div class="card"><h2>강수량별 하루 매출 감소율</h2><div id="curve"></div><div class="sub" id="curveNote"></div></div>
+ </div>
+ <div class="card" id="bizSup"></div>
+ <div class="card"><h2>비슷했던 날 (관측 강수량 10mm 이상, 모델 추정 피해)</h2><div class="scroll" id="past"></div></div>
+</div>
+
+<div class="note">
+ <span>• 예상 피해 = 비가 없었을 때의 기준 매출 − 예보 강수량에서 예상되는 매출. 기준 매출은 직전 4주 같은 요일 실제 매출을 모형 효과로 보정해 평균한 값, 강수 계수는 예보 입력으로 적합한 값입니다.</span>
+ <span>• 알림 단계는 이 프로젝트의 2025-07~12 자료에서 정한 기준(예보 1mm, 10mm, 강수확률 60%)이며 기상청 특보 기준이 아닙니다. 강수확률만 높은 날은 모형상 예상 피해가 0입니다.</span>
+ <span>• 우선순위·감소율은 AWS 관측으로 추정한 계수 기준입니다(규모 축 = 하루 피해액×확신도 순위와 보수 score 순위의 평균, 상대 축 = 매출 대비 총 피해 순위). 구간은 95% 구간입니다.</span>
+ <span>• 카드 매출 기준이며 전체 시장 매출이나 이익이 아닙니다. 한 계절 자료이고, 회복(이연 소비) 효과는 반영하지 않았습니다.</span>
+ <span>• 집단 구분: 규모 축과 상대 축 각각 상위 5개. 종합은 두 축 값의 평균입니다.</span>
+ <span>• 지원 방안은 제안이며 효과는 검증하지 않았습니다. 지원 후 비슷한 강수일과 비교하는 사후 평가가 필요합니다.</span>
+</div>
+</div>
+<script>
+const DATA=__DATA__;
+const LV=[{k:'1단계',n:'비 없음',c:'var(--l0)'},{k:'2단계',n:'주의',c:'var(--l1)'},{k:'3단계',n:'피해 예상',c:'var(--l3)'}];
+const regs=Object.keys(DATA.regions);
+let st={reg:regs[0],view:'gov',date:'2025-09-13',ind:null,basis:'final'};
+try{const s=JSON.parse(localStorage.getItem('dash-st')||'{}');if(s.reg&&DATA.regions[s.reg])st.reg=s.reg;if(s.view)st.view=s.view}catch(e){}
+const $=id=>document.getElementById(id);
+const fmt=(x,d=1)=>Number(x).toLocaleString('ko-KR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const eok=m=>m/1e4; // 만원 -> 억
+function level(d){const r=d.rf,p=d.pop;return r>=10?2:(r>=1||p>=60)?1:0}
+const short=r=>r.replace(/^\S+\s/,'');
+function R(){return DATA.regions[st.reg]}
+function day(){return R().days.find(d=>d.d===st.date)||R().days[0]}
+function rankOf(ind){return DATA.rank.find(x=>x.reg===st.reg&&x.ind===ind)}
+function dmgOf(ind){return DATA.dmg.find(x=>x.reg===st.reg&&x.ind===ind)}
+
+const GRP={both:{n:'둘 다 상위',t:'피해 자체를 줄이기',m:['우천 시 환불·일정 변경권','실내 대체 프로그램','전날 17시 예보로 사전 안내'],trig:'예보 3단계(10mm 이상)',min:2,d:'비 오는 날 매출이 크게 줄고 금액도 큼'},
+ scale:{n:'금액 기준 상위',t:'지역 수요 유지',m:['지역화폐 추가 환급·할인 행사','대형 업장과 협의'],trig:'예보 3단계(10mm 이상)',min:2,d:'감소율은 낮지만 합산 금액이 큼'},
+ rel:{n:'취약도 기준 상위',t:'업체 손실 보전',m:['소액 긴급 지원·공과금 감면','업체별 실제 매출 감소 기준으로 지급'],trig:'비 온 날 누적 후 사후 지급',min:null,d:'감소율은 높지만 총 금액은 작음'}};
+const grpTag=g=>g==='none'?'':`<span class="tag g-${g}">${GRP[g].n}</span>`;
+function members(g){return R().inds.map((n,i)=>({n,i,k:rankOf(n)})).filter(x=>x.k&&x.k.grp===g)}
+function supportText(g,d,L){const G=GRP[g];
+ if(G.min!==null)return L>=G.min?`<span class="on">발동</span>`:`<span class="off">대기</span>`;
+ const c=R().days.filter(x=>x.d<=st.date&&x.ro>=10).length;return `<span class="off">사후 지급형</span> <span class="sub">${st.date}까지 관측 10mm 이상 ${c}일</span>`}
+function renderSupport(d,L){
+ $('support').innerHTML=['both','scale','rel'].map(g=>{const G=GRP[g],ms=members(g).sort((a,b)=>a.k.rank-b.k.rank),s=sum(ms.map(x=>d.pf[x.i]));
+  return `<div class="supc"><h3>${G.n} <span class="sub">· ${G.t}</span></h3><div class="sub">${G.d}</div>${supportText(g,d,L)}
+  <div class="sub">발동 기준: ${G.trig}</div><ul>${G.m.map(x=>`<li>${x}</li>`).join('')}</ul>
+  <div class="sub" style="margin-top:4px">이날 이 집단 예상 피해 <b style="color:var(--fg)">${fmt(s/1e4,2)}억</b></div>
+  <div>${ms.map(x=>`<div>${x.n}<span class="sub">${fmt(d.pf[x.i],0)}만원</span></div>`).join('')||'<span class="sub">해당 없음</span>'}</div></div>`}).join('');
+}
+function save(){try{localStorage.setItem('dash-st',JSON.stringify({reg:st.reg,view:st.view}))}catch(e){}}
+
+function init(){
+ $('regSeg').innerHTML=regs.map(r=>`<button data-r="${r}" aria-pressed="${r===st.reg}">${short(r)}</button>`).join('');
+ $('regSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;st.reg=b.dataset.r;st.ind=null;save();render()};
+ $('viewSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;st.view=b.dataset.v;save();render()};
+ $('basisSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;st.basis=b.dataset.b;render()};
+ $('dt').onchange=e=>{if(R().days.some(d=>d.d===e.target.value)){st.date=e.target.value;render()}};
+ const step=n=>{const ds=R().days.map(d=>d.d);let i=ds.indexOf(st.date)+n;i=Math.max(0,Math.min(ds.length-1,i));st.date=ds[i];render()};
+ $('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);
+ $('jump').onclick=()=>{let b=R().days[0];for(const d of R().days)if(sum(d.pf)>sum(b.pf))b=d;st.date=b.d;render()};
+ $('lg').innerHTML=LV.map(l=>`<span><i style="background:${l.c}"></i>${l.k} ${l.n}</span>`).join('')+'<span><i style="background:var(--fg);opacity:.35"></i>선택한 날</span>';
+ render();
+}
+const sum=a=>a.reduce((x,y)=>x+y,0);
+
+function render(){
+ for(const b of $('regSeg').children)b.setAttribute('aria-pressed',b.dataset.r===st.reg);
+ for(const b of $('basisSeg').children)b.setAttribute('aria-pressed',b.dataset.b===st.basis);
+ for(const b of $('viewSeg').children)b.setAttribute('aria-pressed',b.dataset.v===st.view);
+ $('gov').hidden=st.view!=='gov';$('biz').hidden=st.view!=='biz';
+ if(!R().days.some(d=>d.d===st.date))st.date=R().days[0].d;
+ $('dt').min=R().days[0].d;$('dt').value=st.date;
+ const d=day();const prev=new Date(st.date);prev.setDate(prev.getDate()-1);
+ $('issued').textContent=`${prev.toISOString().slice(0,10)} 17:00 발표 단기예보 기준`;
+ if(st.view==='gov')renderGov();else renderBiz();
+}
+
+function renderGov(){
+ const d=day(),L=level(d),tot=eok(sum(d.pf)),ratio=100*tot/d.base;
+ $('heroL').innerHTML=`<div class="sub">${short(st.reg)} · ${st.date}</div>
+  <span class="pill" style="background:${LV[L].c}">${LV[L].k} ${LV[L].n}</span>
+  <div class="big">${fmt(tot,1)}<small> 억원 예상 피해</small></div>
+  <div class="sub">대상 업종 기준 매출의 ${fmt(ratio,1)}%</div>
+  <div class="kv"><div><span>예보 강수량</span><b>${fmt(d.rf,0)}mm</b></div><div><span>강수확률</span><b>${d.pop}%</b></div><div><span>기준 매출</span><b>${fmt(d.base,1)}억</b></div></div>
+  ${d.hd?'<div class="sub"><span class="tag warn">공휴일 효과 미추정일</span> 추석 당일 등은 학습 자료에 같은 유형이 없어 기준 매출이 부정확합니다.</div>':''}${d.nb?`<div class="sub"><span class="tag warn">일부 업종 기준 매출 없음</span> ${d.nb}개 업종은 합계에서 제외되었습니다.</div>`:''}
+  <div class="sub">${L>=2?'현금 지원·바우처·방문 유도 등 수요 방어 조치를 준비할 날입니다.':L==1?'소규모 영향. 지켜볼 날입니다.':'특별한 조치가 필요 없는 날입니다.'}</div>`;
+ timeline();
+ const key={final:'rank',scale:'sr',rel:'rr'}[st.basis];
+ const rows=R().inds.map((n,i)=>({n,v:d.pf[i],rk:rankOf(n)})).sort((a,b)=>(a.rk?a.rk[key]:99)-(b.rk?b.rk[key]:99));
+ const mx=Math.max(...rows.map(r=>r.v),1);
+ $('dayTbl').innerHTML=`<table><tr><th class="l">${{final:'종합',scale:'금액',rel:'취약도'}[st.basis]}순위 · 업종</th><th>예상 피해(만원)</th><th class="l" style="width:90px"></th><th>10mm 감소율</th><th>매출 대비 총 피해</th></tr>`+rows.map(r=>{const k=r.rk;
+  return `<tr class="click" data-i="${r.n}"><td class="l">${k?k[key]:'-'} · ${r.n}${k?grpTag(k.grp):''}</td><td>${fmt(r.v,0)}</td><td class="l"><div class="bar" style="width:${Math.round(80*r.v/mx)}px"></div></td><td>${k?fmt(k.r10,1)+'%':'-'}</td><td>${k?fmt(k.rv,1)+'%':'-'}</td></tr>`}).join('')+'</table>';
+ renderSupport(d,L);
+ $('caseTbl').innerHTML=`<table><tr><th class="l">유형</th><th class="l">날짜</th><th>예보/관측(mm)</th><th>기준 매출(억)</th><th>예상 피해(억)</th><th>구간(억)</th><th>피해율</th><th>사후값(억)</th></tr>`+DATA.cases.filter(c=>c.reg===st.reg).map(c=>`<tr class="click" data-c="${c.d}"><td class="l">${c.typ}</td><td class="l">${c.d}</td><td>${fmt(c.rf,1)} / ${fmt(c.ro,1)}</td><td>${fmt(c.base,1)}</td><td>${fmt(c.pred,1)}</td><td>${fmt(c.lo,1)}~${fmt(c.hi,1)}</td><td>${fmt(c.pct,1)}%</td><td>${fmt(c.post,1)}</td></tr>`).join('')+'</table>';
+ $('caseTbl').onclick=e=>{const tr=e.target.closest('tr[data-c]');if(tr){st.date=tr.dataset.c;render()}};
+ $('dayTbl').onclick=e=>{const tr=e.target.closest('tr[data-i]');if(!tr)return;st.ind=tr.dataset.i;st.view='biz';save();render()};
+ const al=DATA.alert.filter(a=>a.reg===st.reg);
+ $('alertTbl').innerHTML=`<table><tr><th class="l">등급</th><th>일수</th><th>실제 10mm+ 비율</th><th>예측 피해(억/일)</th><th>실현 피해(억/일)</th><th>기간 피해 비중</th></tr>`+al.map(a=>{const l=a.l;
+  return `<tr><td class="l"><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${LV[l].c};margin-right:6px"></i>${LV[l].k} ${LV[l].n}</td><td>${a.n}</td><td>${fmt(100*a.h10,0)}%</td><td>${fmt(a.pred,1)}</td><td>${fmt(a.real,1)}</td><td>${fmt(a.share,0)}%</td></tr>`}).join('')+'</table>';
+}
+
+function timeline(){
+ const ds=R().days,W=640,H=190,m={l:34,r:8,t:8,b:22},n=ds.length;
+ const vals=ds.map(d=>eok(sum(d.pf))),mx=Math.ceil(Math.max(...vals)/2)*2||2;
+ const bw=(W-m.l-m.r)/n,y=v=>m.t+(H-m.t-m.b)*(1-v/mx);
+ let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="일별 예상 피해 막대그래프">`;
+ for(let k=0;k<=4;k++){const v=mx*k/4;s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${m.l-4}" y="${y(v)+3}" text-anchor="end">${fmt(v,v%1?1:0)}</text>`}
+ ds.forEach((d,i)=>{const x=m.l+i*bw,h=H-m.b-y(vals[i]);
+  if(d.d===st.date)s+=`<rect x="${x-1}" y="${m.t}" width="${bw+2}" height="${H-m.t-m.b}" fill="var(--fg)" opacity=".12"/>`;
+  s+=`<rect x="${x+.2}" y="${y(vals[i])}" width="${Math.max(bw-.6,1)}" height="${Math.max(h,0)}" fill="${LV[level(d)].c}" data-d="${d.d}"><title>${d.d} · 예보 ${fmt(d.rf,0)}mm · ${fmt(vals[i],1)}억</title></rect>`});
+ const mon=['7월','8월','9월','10월','11월','12월'];
+ mon.forEach((t,k)=>{const idx=ds.findIndex(d=>+d.d.slice(5,7)===7+k);if(idx>=0)s+=`<text x="${m.l+idx*bw}" y="${H-6}">${t}</text>`});
+ s+=`<text x="${m.l-4}" y="${m.t-1}" text-anchor="end" style="font-size:9px">억원</text></svg>`;
+ $('tl').innerHTML=s;
+ $('tl').onclick=e=>{const r=e.target.closest('rect[data-d]');if(r){st.date=r.dataset.d;render()}};
+}
+
+function renderBiz(){
+ const inds=R().inds.slice().sort((a,b)=>(rankOf(a)?rankOf(a).rank:99)-(rankOf(b)?rankOf(b).rank:99));
+ $('ind').innerHTML=inds.map(n=>`<option>${n}</option>`).join('');
+ if(!st.ind||!inds.includes(st.ind))st.ind=inds[0];
+ $('ind').value=st.ind;$('ind').onchange=e=>{st.ind=e.target.value;render()};
+ const d=day(),i=R().inds.indexOf(st.ind),k=rankOf(st.ind),m=dmgOf(st.ind),L=level(d);
+ const v=d.pf[i],bs=(d.bs&&d.bs[i])||0,ratio=bs>0?100*v/bs:null;   // ratio = that day's predicted damage / that day's baseline sales (hybrid, same industry)
+ $('bizL').innerHTML=`<div class="sub">${short(st.reg)} · ${st.ind} · ${st.date}</div>
+  <span class="pill" style="background:${LV[L].c}">${LV[L].k} ${LV[L].n}</span>
+  <div class="big">${ratio==null?'-':fmt(ratio,1)+'%'}<small> 매출 감소 예상</small></div>
+  <div class="sub">${bs>0?`이날 기준 매출 ${fmt(bs,0)}만원 중 약 ${fmt(v,0)}만원 (직전 4주 같은 요일 기반)`:'이날은 기준 매출을 만들 자료가 부족해 계산하지 않습니다'}</div>
+  <div class="kv"><div><span>예보 강수량</span><b>${fmt(d.rf,0)}mm</b></div><div><span>강수확률</span><b>${d.pop}%</b></div><div><span>지역 내 취약 순위</span><b>${k?k.rank+'위':'-'}</b></div></div>
+`;
+ const G=k&&k.grp!=='none'?GRP[k.grp]:null;
+ $('bizSup').innerHTML=G?`<h2>이 업종의 지원 방안 <span class="tag g-${k.grp}">${G.n}</span></h2><div class="sub">${G.d}. 목적: ${G.t}.</div><ul style="margin:6px 0 0;padding-left:18px">${G.m.map(x=>`<li>${x}</li>`).join('')}</ul><div class="sub" style="margin-top:6px">발동 기준: ${G.trig} · ${supportText(k.grp,d,L)}</div>`:`<h2>이 업종의 지원 방안</h2><div class="sub">금액 기준·취약도 기준 모두 상위 5위 밖이라 모니터링 대상입니다.</div>`;
+ const xs=[0,5,10,20,30,50],W=420,H=170,mm={l:34,r:10,t:10,b:24};
+ const f=(x,b)=>100*(1-Math.pow(1+x,b)); // b ln(1+x)
+ const b10=Math.log(1-m.r10/100)/Math.log(11),blo=Math.log(1-m.lo/100)/Math.log(11),bhi=Math.log(1-m.hi/100)/Math.log(11);
+ const mx=Math.max(10,Math.ceil(f(50,blo)/10)*10),X=x=>mm.l+(W-mm.l-mm.r)*x/50,Y=v=>mm.t+(H-mm.t-mm.b)*(1-v/mx);
+ const path=b=>{let p='';for(let x=0;x<=50;x+=1)p+=(x?'L':'M')+X(x)+','+Y(f(x,b));return p};
+ let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="강수량별 매출 감소율">`;
+ [0,25,50,75].filter(v=>v<=mx).concat([mx]).forEach(v=>{s+=`<line x1="${mm.l}" x2="${W-mm.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${mm.l-4}" y="${Y(v)+3}" text-anchor="end">${v}%</text>`});
+ xs.forEach(x=>s+=`<text x="${X(x)}" y="${H-8}" text-anchor="middle">${x}mm</text>`);
+ s+=`<path d="${path(blo)}L${[...Array(51).keys()].reverse().map(x=>X(x)+','+Y(f(x,bhi))).join('L')}Z" fill="var(--accent)" opacity=".15"/><path d="${path(b10)}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+ const fx=Math.min(d.rf,50);s+=`<line x1="${X(fx)}" x2="${X(fx)}" y1="${mm.t}" y2="${H-mm.b}" stroke="${LV[L].c}" stroke-dasharray="4 3"/><circle cx="${X(fx)}" cy="${Y(f(fx,b10))}" r="4" fill="${LV[L].c}"/></svg>`;
+ $('curve').innerHTML=s;
+ $('curveNote').textContent=`10mm 비 오는 날 평균 ${fmt(m.r10,1)}% 감소 (95% 구간 ${fmt(m.lo,1)}~${fmt(m.hi,1)}%). 점선은 이날 예보 강수량. 10mm를 넘으면 감소폭 증가가 완만해집니다.`;
+ const past=R().days.filter(x=>x.ro>=10).sort((a,b)=>b.po[i]-a.po[i]).slice(0,8);
+ $('past').innerHTML=`<table><tr><th class="l">날짜</th><th>관측 강수량</th><th>당시 예보</th><th>모델 추정 피해(만원)</th></tr>`+past.map(x=>`<tr><td class="l">${x.d}</td><td>${fmt(x.ro,0)}mm</td><td>${fmt(x.rf,0)}mm</td><td>${fmt(x.po[i],0)}</td></tr>`).join('')+'</table>';
+}
+init();
+</script>
+
+</html>
