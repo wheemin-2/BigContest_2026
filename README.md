@@ -22,3 +22,6 @@ Gangnam-gu and Chuncheon-si, 2025-07 to 2025-12. Model: log(daily sales) ~ month
     python run_all.py                       # reads preprocessed_data/SH_card_data1_preprocessed.csv
     python run_all.py path/to/card.csv      # or pass a path
     python run_all.py --steps=4             # only some steps
+
+## Slides
+    [📎발표자료 다운로드](https://github.com/wheemin-2/BigContest_2026/edit/main/UBI_presentation.pdf?download=)
