@@ -24,5 +24,5 @@ Gangnam-gu and Chuncheon-si, 2025-07 to 2025-12. Model: log(daily sales) ~ month
     python run_all.py --steps=4             # only some steps
 
 ## Slides
-    [📎발표자료 보기](UBI_presentation.pdf)
-    [📎발표자료 다운로드](https://github.com/wheemin-2/BigContest_2026/releases/download/v1.0/UBI_presentation.pdf)
+    ![발표자료 보기](UBI_presentation.pdf)
+    [발표자료 다운로드](https://github.com/wheemin-2/BigContest_2026/releases/download/v1.0/UBI_presentation.pdf)
